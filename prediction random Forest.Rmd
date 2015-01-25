@@ -1,0 +1,63 @@
+---
+title: "Course Project - Practical Machine Learning"
+output: html_document
+---
+
+## Description 
+
+The following is a machine learning exercise using data collected from four healthy test subjects for a period of eight hours and were instructed to perform a set of five different exercises (sitting down, standing up, standing, walking, and sitting). The data was collected using personal tracking devices similar to Fitbit, Jawbone Up, and Nike Fuelband. We used machine learning to predict the exercise performed based on data collected for 20 test cases.
+
+## Processing of the Data
+
+A precursory analysis of the data indicated 159 possible predictors and 1 classification variable (not shown here for the purposes of brevity). The classification variable, "classe", was a factor variable with five levels: A,B,C,D,E. 
+
+Of the possible predictor variables, 67 of these variables had high frequencies of NA's. In addition, 34 of the predictor variables had low variance. Both of these types of predictor variables made for poor predictability and hence were removed.
+
+```{r,eval=FALSE}
+data = read.csv("pml-training.csv")
+library(caret)
+split = createDataPartition(y=data$classe,p=0.7,list=F)
+training = data[split,]
+testing = data[-split,]
+
+# remove colums (predicators) with NAs
+training = training[,colSums(is.na(training[,])) == 0]
+
+#remove columns with low variability
+training = training[,-nearZeroVar(training)]
+```
+
+An intuitive analysis of the data assumed that the "X" and UserID variables would not be significant predictors of exercise activity (all users had performed each of the exercises). Moreover the timestamps were not significant either. All these variables were removed. 
+
+```{r,eval=FALSE}
+#remove X variable, which doesn't provide much assistance in prediction
+training$X=NULL
+
+#remove timestamp variables which don't provide assistance in predicting classe
+training$raw_timestamp_part_1=NULL
+training$raw_timestamp_part_2=NULL
+training$cvtd_timestamp=NULL
+
+#remove USERid
+training$user_name=NULL
+```
+
+A parsimonious model of 53 predictor variables is then produced. Two machine learning algorithms are then run to evaluate which one had better results. 
+
+```{r,eval=FALSE}
+#build random forest model with principal components analysis as preprocessing method
+rf_model = train(classe~.,preProcess="pca",method="rf",data=training)
+
+#predict with new data
+rf_prediction = predict(rf_model,newdata=testing)
+
+#build Generalized Boosted Regression model with principal components analysis 
+gbm_model = train(classe~.,preProcess="pca",method="gbm",data=training)
+
+#predict with new data
+gbm_prediction = predict(gbm_model,newdata=testing)
+```
+
+Random forest trees were generated for the training dataset using cross-validation (default for Train function from caret package). The model was examnined under the partitioned training set to examine the accuracy and estimated error of prediction. Using cross-validation at a 3-fold an accuracy of 99% with a 95% confidence interval [0.99-0.994] was achieved. 
+
+These results beat the GBM algorithm and hence was used for the project submission. 
